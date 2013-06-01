@@ -55,6 +55,7 @@ EBandTrajectoryCtrl::EBandTrajectoryCtrl(std::string name, costmap_2d::Costmap2D
 	initialize(name, costmap_ros);
 
   // Initialize pid object (note we'll be further clamping its output)
+  // TODO See #1, #2
   pid_.initPid(1, 0, 0, 10, -10);
 }
 
@@ -107,11 +108,37 @@ void EBandTrajectoryCtrl::initialize(std::string name, costmap_2d::Costmap2DROS*
   		dyn_server_->setCallback(dyn_callback_);
 	
 		// read parameters from parameter server
+		//node_private.param("max_vel_lin", max_vel_lin_, 0.75);
+		//node_private.param("max_vel_th", max_vel_th_, 1.0);
 
+		//node_private.param("min_vel_lin", min_vel_lin_, 0.1);
+		//node_private.param("min_vel_th", min_vel_th_, 0.0);
+
+		//node_private.param("min_in_place_vel_th", min_in_place_vel_th_, 0.0);
+		//node_private.param("in_place_trans_vel", in_place_trans_vel_, 0.0);
 
 	    // diffferential drive parameters
 	    node_private.param("differential_drive", differential_drive_hack_, true);
 
+		/*node_private.param("xy_goal_tolerance", tolerance_trans_, 0.02);
+		node_private.param("yaw_goal_tolerance", tolerance_rot_, 0.04);
+		node_private.param("tolerance_timeout", tolerance_timeout_, 0.5);
+
+		node_private.param("k_prop", k_p_, 4.0);
+		node_private.param("k_damp", k_nu_, 3.5);
+
+		node_private.param("Ctrl_Rate", ctrl_freq_, 10.0); // TODO retrieve this from move base parameters
+
+		node_private.param("max_acceleration", acc_max_, 0.5);
+		node_private.param("virtual_mass", virt_mass_, 0.75);
+
+		node_private.param("max_translational_acceleration", acc_max_trans_, 0.5);
+		node_private.param("max_rotational_acceleration", acc_max_rot_, 1.5);
+
+    node_private.param("rotation_correction_threshold", rotation_correction_threshold_, 0.5);
+
+    // diffferential drive parameters
+    node_private.param("differential_drive", differential_drive_hack_, true);*/
 		node_private.param("k_int", k_int_, 0.005);
 		node_private.param("k_diff", k_diff_, -0.005);
 		node_private.param("bubble_velocity_multiplier", bubble_velocity_multiplier_, 2.0);
@@ -198,7 +225,8 @@ double angularDiff (const geometry_msgs::Twist& heading,
     return d-2*pi;
 }
 
-bool EBandTrajectoryCtrl::getTwistDifferentialDrive(geometry_msgs::Twist& twist_cmd) {
+bool EBandTrajectoryCtrl::getTwistDifferentialDrive(geometry_msgs::Twist& twist_cmd, bool& goal_reached) {
+  goal_reached = false;
 
   geometry_msgs::Twist robot_cmd, bubble_diff;
 	robot_cmd.linear.x = 0.0;
@@ -259,6 +287,7 @@ bool EBandTrajectoryCtrl::getTwistDifferentialDrive(geometry_msgs::Twist& twist_
           // goal position reached
           robot_cmd.linear.x = 0.0;
           robot_cmd.angular.z = 0.0;
+          goal_reached = true;
         }
         command_provided = true;
         break;
@@ -287,7 +316,7 @@ bool EBandTrajectoryCtrl::getTwistDifferentialDrive(geometry_msgs::Twist& twist_
 
     // check if we are above this threshold, if so then perform in-place rotation
     if (fabs(bubble_diff.angular.z) > in_place_rotation_threshold) {
-      ROS_INFO("Performing in place rotation (diff): %f", bubble_diff.angular.z);
+      ROS_DEBUG("Performing in place rotation (diff): %f", bubble_diff.angular.z);
       robot_cmd.angular.z = k_p_ * bubble_diff.angular.z;
       double rotation_sign = (bubble_diff.angular.z < 0) ? -1.0 : +1.0;
       if (fabs(robot_cmd.angular.z) < min_in_place_vel_th_) {
@@ -340,10 +369,11 @@ bool EBandTrajectoryCtrl::getTwistDifferentialDrive(geometry_msgs::Twist& twist_
 }
 
 
-bool EBandTrajectoryCtrl::getTwist(geometry_msgs::Twist& twist_cmd)
+bool EBandTrajectoryCtrl::getTwist(geometry_msgs::Twist& twist_cmd, bool& goal_reached)
 {
+  goal_reached = false;
   if (differential_drive_hack_) {
-    return getTwistDifferentialDrive(twist_cmd);
+    return getTwistDifferentialDrive(twist_cmd, goal_reached);
   }
 
 	// init twist cmd to be handed back to caller
@@ -526,7 +556,9 @@ bool EBandTrajectoryCtrl::getTwist(geometry_msgs::Twist& twist_cmd)
         {
         
           const double angular_diff = angularDiff(control_deviation, elastic_band_.at(0).center.pose);
+          // TODO See Issue #1, #2
           const double vel = pid_.updatePid(-angular_diff, ros::Duration(1/ctrl_freq_));
+          //const double vel = 0;
           const double mult = fabs(vel) > max_vel_th_ ? max_vel_th_/fabs(vel) : 1.0;
           control_deviation.angular.z = vel*mult;
           const double abs_vel = fabs(control_deviation.angular.z);
@@ -709,6 +741,7 @@ bool EBandTrajectoryCtrl::getTwist(geometry_msgs::Twist& twist_cmd)
                   last_vel_.linear.y = 0.0;
                   last_vel_.angular.z = 0.0;
                   start_position_counter_ = 0;
+                  goal_reached = true;
                   break;
 		}
 	}

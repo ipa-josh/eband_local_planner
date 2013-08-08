@@ -30,6 +30,8 @@
   <depend package="actionlib"/>
   <depend package="actionlib_msgs"/>
 
+  <depend package="dynamic_reconfigure"/>
+
   <rosdep name="eigen" />
   <rosdep name="tinyxml" />
 

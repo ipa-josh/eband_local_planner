@@ -61,6 +61,10 @@
 // PID control library
 #include <control_toolbox/pid.h>
 
+// Dynamic reconfigure
+#include <dynamic_reconfigure/server.h>
+#include <eband_local_planner/EBandLocalPlannerConfig.h>
+
 
 namespace eband_local_planner{
 
@@ -123,6 +127,9 @@ class EBandTrajectoryCtrl{
 		bool getTwistDifferentialDrive(geometry_msgs::Twist& twist_cmd);
 
 	private:
+
+		dynamic_reconfigure::Server<eband_local_planner::EBandLocalPlannerConfig> * dyn_server_;
+	
 
 		// pointer to external objects (do NOT delete object)
 		costmap_2d::Costmap2DROS* costmap_ros_; ///<@brief pointer to costmap
@@ -194,6 +201,8 @@ class EBandTrajectoryCtrl{
 		 * @return absolute value of maximum allowed velocity within this bubble
 		 */
 		double getBubbleTargetVel(const int& target_bub_num, const std::vector<Bubble>& band, geometry_msgs::Twist& VelDir);
+
+		void configure_callback(eband_local_planner::EBandLocalPlannerConfig &config, uint32_t level) ;
 
 };
 };

@@ -121,10 +121,12 @@ void EBandTrajectoryCtrl::initialize(std::string name, costmap_2d::Costmap2DROS*
 		// copy adress of costmap and Transform Listener (handed over from move_base)
 		costmap_ros_ = costmap_ros;
 
-		smoothing_enabled_ = true;
+		//start-/stop-smoothing parameters
+		node_private.param("smoothing_enabled", smoothing_enabled_, true);
+		node_private.param("start_smooth_iter", start_smoothing_border_, 10);
+		node_private.param("stop_smoothing_dist_to_goal", stop_smoothing_dist_, 0.05);
+
 		start_position_counter_ = 0;
-		start_smoothing_border_ = 10;
-		stop_smoothing_dist_ = 0.4;
 
 		// init velocity for interpolation
 		last_vel_.linear.x = 0.0;
@@ -650,25 +652,24 @@ bool EBandTrajectoryCtrl::getTwist(geometry_msgs::Twist& twist_cmd)
 		// smoothing at start of trajectory
 		if(start_position_counter_ <= start_smoothing_border_)
 		{
-			ROS_INFO_STREAM("Smoothing start from: " << last_vel_);
+			ROS_DEBUG_STREAM("Smoothing start from: " << last_vel_);
 			last_vel_.linear.x *= (double) start_position_counter_/start_smoothing_border_;
 			last_vel_.linear.y *= (double) start_position_counter_/start_smoothing_border_;
 			last_vel_.angular.z *= (double) start_position_counter_/start_smoothing_border_;
-			ROS_INFO_STREAM("Smoothing start to: " << last_vel_);
+			ROS_DEBUG_STREAM("Smoothing start to: " << last_vel_);
 
 			start_position_counter_++;
 		}
 		// smoothing at end of trajectory
 		if(dist_to_goal < stop_smoothing_dist_)
 		{
-			ROS_INFO_STREAM("Smoothing stop from: " << last_vel_);
+			ROS_DEBUG_STREAM("Smoothing stop from: " << last_vel_);
 			last_vel_.linear.x *= fabs(dist_to_goal)/stop_smoothing_dist_;
 			last_vel_.linear.y *= fabs(dist_to_goal)/stop_smoothing_dist_;
 			last_vel_.angular.z *= fabs(dist_to_goal)/stop_smoothing_dist_;;
-			ROS_INFO_STREAM("Smoothing stop to: " << last_vel_);
-			ROS_INFO_STREAM("Smoothing factor: " << dist_to_goal/stop_smoothing_dist_);
-			ROS_INFO_STREAM("dist_to_goal: " << dist_to_goal);
-			ROS_INFO_STREAM("band size: " << elastic_band_.size());
+			ROS_DEBUG_STREAM("Smoothing stop to: " << last_vel_);
+			ROS_DEBUG_STREAM("Smoothing factor: " << dist_to_goal/stop_smoothing_dist_);
+			ROS_DEBUG_STREAM("dist_to_goal: " << dist_to_goal);
 		}
 	}
 

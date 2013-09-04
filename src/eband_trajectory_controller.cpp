@@ -640,6 +640,15 @@ bool EBandTrajectoryCtrl::getTwist(geometry_msgs::Twist& twist_cmd)
 	// last checks - limit current twist cmd (upper and lower bounds)
 	last_vel_ = limitTwist(last_vel_);
 
+	if(dist_to_goal < 0.3)
+	{
+		//ROS_INFO_STREAM("Smoothing update from: " << last_vel_);
+		last_vel_.linear.x *= 0.7;
+		last_vel_.linear.y *= 0.7;
+		last_vel_.angular.z *= 0.7;
+		//ROS_INFO_STREAM("Smoothing update to: " << last_vel_);
+	}
+
 	// finally set robot_cmd (to non-zero value)
 	robot_cmd = last_vel_;
 

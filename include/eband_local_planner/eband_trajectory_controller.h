@@ -65,6 +65,8 @@
 #include <dynamic_reconfigure/server.h>
 #include <eband_local_planner/EBandLocalPlannerConfig.h>
 
+#include <algorithm>
+
 
 namespace eband_local_planner{
 
@@ -147,6 +149,12 @@ class EBandTrajectoryCtrl{
     double tolerance_trans_, tolerance_rot_, tolerance_timeout_;
     double acc_max_trans_, acc_max_rot_;
     double rotation_correction_threshold_; // We'll do rotation correction if we're at least this far from the goal
+
+    bool smoothing_enabled_;
+    int start_position_counter_;
+    int start_smoothing_border_;
+    double stop_smoothing_dist_;
+    
 
     // diff drive only parameters
     double bubble_velocity_multiplier_;

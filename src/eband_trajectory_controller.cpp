@@ -121,6 +121,11 @@ void EBandTrajectoryCtrl::initialize(std::string name, costmap_2d::Costmap2DROS*
 		// copy adress of costmap and Transform Listener (handed over from move_base)
 		costmap_ros_ = costmap_ros;
 
+		smoothing_enabled_ = true;
+		start_position_counter_ = 0;
+		start_smoothing_border_ = 10;
+		stop_smoothing_dist_ = 0.4;
+
 		// init velocity for interpolation
 		last_vel_.linear.x = 0.0;
 		last_vel_.linear.y = 0.0;
@@ -640,13 +645,31 @@ bool EBandTrajectoryCtrl::getTwist(geometry_msgs::Twist& twist_cmd)
 	// last checks - limit current twist cmd (upper and lower bounds)
 	last_vel_ = limitTwist(last_vel_);
 
-	if(dist_to_goal < 0.3)
+	if(smoothing_enabled_)
 	{
-		//ROS_INFO_STREAM("Smoothing update from: " << last_vel_);
-		last_vel_.linear.x *= 0.7;
-		last_vel_.linear.y *= 0.7;
-		last_vel_.angular.z *= 0.7;
-		//ROS_INFO_STREAM("Smoothing update to: " << last_vel_);
+		// smoothing at start of trajectory
+		if(start_position_counter_ <= start_smoothing_border_)
+		{
+			ROS_INFO_STREAM("Smoothing start from: " << last_vel_);
+			last_vel_.linear.x *= (double) start_position_counter_/start_smoothing_border_;
+			last_vel_.linear.y *= (double) start_position_counter_/start_smoothing_border_;
+			last_vel_.angular.z *= (double) start_position_counter_/start_smoothing_border_;
+			ROS_INFO_STREAM("Smoothing start to: " << last_vel_);
+
+			start_position_counter_++;
+		}
+		// smoothing at end of trajectory
+		if(dist_to_goal < stop_smoothing_dist_)
+		{
+			ROS_INFO_STREAM("Smoothing stop from: " << last_vel_);
+			last_vel_.linear.x *= fabs(dist_to_goal)/stop_smoothing_dist_;
+			last_vel_.linear.y *= fabs(dist_to_goal)/stop_smoothing_dist_;
+			last_vel_.angular.z *= fabs(dist_to_goal)/stop_smoothing_dist_;;
+			ROS_INFO_STREAM("Smoothing stop to: " << last_vel_);
+			ROS_INFO_STREAM("Smoothing factor: " << dist_to_goal/stop_smoothing_dist_);
+			ROS_INFO_STREAM("dist_to_goal: " << dist_to_goal);
+			ROS_INFO_STREAM("band size: " << elastic_band_.size());
+		}
 	}
 
 	// finally set robot_cmd (to non-zero value)
@@ -684,6 +707,7 @@ bool EBandTrajectoryCtrl::getTwist(geometry_msgs::Twist& twist_cmd)
                   last_vel_.linear.x = 0.0;
                   last_vel_.linear.y = 0.0;
                   last_vel_.angular.z = 0.0;
+                  start_position_counter_ = 0;
                   break;
 		}
 	}

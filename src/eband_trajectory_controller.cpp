@@ -120,11 +120,11 @@ void EBandTrajectoryCtrl::initialize(std::string name, costmap_2d::Costmap2DROS*
 	    // diffferential drive parameters
 	    node_private.param("differential_drive", differential_drive_hack_, true);
 
-		/*node_private.param("xy_goal_tolerance", tolerance_trans_, 0.02);
+		node_private.param("xy_goal_tolerance", tolerance_trans_, 0.02);
 		node_private.param("yaw_goal_tolerance", tolerance_rot_, 0.04);
 		node_private.param("tolerance_timeout", tolerance_timeout_, 0.5);
 
-		node_private.param("k_prop", k_p_, 4.0);
+		/*node_private.param("k_prop", k_p_, 4.0);
 		node_private.param("k_damp", k_nu_, 3.5);
 
 		node_private.param("Ctrl_Rate", ctrl_freq_, 10.0); // TODO retrieve this from move base parameters
@@ -702,6 +702,14 @@ bool EBandTrajectoryCtrl::getTwist(geometry_msgs::Twist& twist_cmd, bool& goal_r
 			ROS_DEBUG_STREAM("Smoothing stop to: " << last_vel_);
 			ROS_DEBUG_STREAM("Smoothing factor: " << dist_to_goal/stop_smoothing_dist_);
 			ROS_DEBUG_STREAM("dist_to_goal: " << dist_to_goal);
+			// Calculate orientation difference to goal orientation (not captured in bubble_diff)
+        	double robot_yaw = tf::getYaw(elastic_band_.at(0).center.pose.orientation);
+        	double goal_yaw = tf::getYaw(elastic_band_.at((int)elastic_band_.size() - 1).center.pose.orientation);
+        	float orientation_diff = angles::normalize_angle(goal_yaw - robot_yaw);
+			if((dist_to_goal < tolerance_trans_) && (orientation_diff < tolerance_rot_))
+			{
+				goal_reached = true;
+			}
 		}
 	}
 

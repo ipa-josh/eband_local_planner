@@ -151,7 +151,7 @@ void EBandTrajectoryCtrl::initialize(std::string name, costmap_2d::Costmap2DROS*
 		//start-/stop-smoothing parameters
 		node_private.param("smoothing_enabled", smoothing_enabled_, true);
 		node_private.param("start_smooth_iter", start_smoothing_border_, 10);
-		node_private.param("stop_smoothing_dist_to_goal", stop_smoothing_dist_, 0.05);
+		node_private.param("stop_smoothing_dist_to_goal", stop_smoothing_dist_, 0.1);
 
 		start_position_counter_ = 0;
 
@@ -679,6 +679,7 @@ bool EBandTrajectoryCtrl::getTwist(geometry_msgs::Twist& twist_cmd, bool& goal_r
 	// last checks - limit current twist cmd (upper and lower bounds)
 	last_vel_ = limitTwist(last_vel_);
 
+	// smooth the velocty at the start/end of trajectory
 	if(smoothing_enabled_)
 	{
 		// smoothing at start of trajectory
@@ -689,6 +690,7 @@ bool EBandTrajectoryCtrl::getTwist(geometry_msgs::Twist& twist_cmd, bool& goal_r
 			last_vel_.linear.y *= (double) start_position_counter_/start_smoothing_border_;
 			last_vel_.angular.z *= (double) start_position_counter_/start_smoothing_border_;
 			ROS_DEBUG_STREAM("Smoothing start to: " << last_vel_);
+			ROS_DEBUG_STREAM("Start Smoothing factor: " << (double) start_position_counter_/start_smoothing_border_);
 
 			start_position_counter_++;
 		}
@@ -696,18 +698,27 @@ bool EBandTrajectoryCtrl::getTwist(geometry_msgs::Twist& twist_cmd, bool& goal_r
 		if(dist_to_goal < stop_smoothing_dist_)
 		{
 			ROS_DEBUG_STREAM("Smoothing stop from: " << last_vel_);
-			last_vel_.linear.x *= fabs(dist_to_goal)/stop_smoothing_dist_;
-			last_vel_.linear.y *= fabs(dist_to_goal)/stop_smoothing_dist_;
-			last_vel_.angular.z *= fabs(dist_to_goal)/stop_smoothing_dist_;;
-			ROS_DEBUG_STREAM("Smoothing stop to: " << last_vel_);
-			ROS_DEBUG_STREAM("Smoothing factor: " << dist_to_goal/stop_smoothing_dist_);
-			ROS_DEBUG_STREAM("dist_to_goal: " << dist_to_goal);
 			// Calculate orientation difference to goal orientation (not captured in bubble_diff)
         	double robot_yaw = tf::getYaw(elastic_band_.at(0).center.pose.orientation);
         	double goal_yaw = tf::getYaw(elastic_band_.at((int)elastic_band_.size() - 1).center.pose.orientation);
         	float orientation_diff = angles::normalize_angle(goal_yaw - robot_yaw);
+        	// linear smoothting
+			last_vel_.linear.x *= fabs(dist_to_goal)/stop_smoothing_dist_;
+			last_vel_.linear.y *= fabs(dist_to_goal)/stop_smoothing_dist_;
+			ROS_DEBUG_STREAM("trans dist_to_goal: " << dist_to_goal);
+			ROS_DEBUG_STREAM("Stop Trans-Smoothing factor: " << dist_to_goal/stop_smoothing_dist_);
+			if(orientation_diff < stop_smoothing_dist_)
+			{
+				// angular smoothting only if the orientation diff is small enough
+				last_vel_.angular.z *= fabs(orientation_diff)/stop_smoothing_dist_;
+				ROS_DEBUG_STREAM("rot dist_to_goal: " << orientation_diff);
+				ROS_DEBUG_STREAM("Stop Rot-Smoothing factor: " << fabs(orientation_diff)/stop_smoothing_dist_);
+			}
+
+			ROS_DEBUG_STREAM("Smoothing stop to: " << last_vel_);
 			if((dist_to_goal < tolerance_trans_) && (orientation_diff < tolerance_rot_))
 			{
+				// set goal_reached to make sure, the robot stops at the end of trajectory
 				goal_reached = true;
 			}
 		}

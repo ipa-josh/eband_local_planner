@@ -1,0 +1,8 @@
+<stack>
+  <description brief="eband_local_planner">eband_local_planner</description>
+  <author>Maintained by Alexander Bubeck</author>
+  <license>LGPL</license>  
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/eband_local_planner</url>
+
+</stack>

@@ -5,4 +5,11 @@
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/eband_local_planner</url>
 
+  <depend stack="common" />
+  <depend stack="ros_comm" />
+  <depend stack="navigation" />
+  <depend stack="common_msgs" />
+  <depend stack="geometry" />
+  <depend stack="pr2_controllers" />
+  <depend stack="actionlib" />
 </stack>

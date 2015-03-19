@@ -5,6 +5,7 @@ project(eband_local_planner)
 find_package(catkin REQUIRED 
   COMPONENTS
     base_local_planner
+    cmake_modules
     costmap_2d
     geometry_msgs
     nav_core
